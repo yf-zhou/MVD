@@ -27,6 +27,10 @@ SCENARIOS_EVAL_FORMAT_PANDA = [('episode', 'E', 'int'), ('step', 'S', 'int'), ('
                                ('third_person_front_cam_episode_reward', 'CAM3FR', 'float'), ('third_person_side_cam_episode_reward', 'CAM3SR', 'float'),
                                ('first_person_cam_success_rate', 'CAM1SR', 'float'), ('third_person_front_cam_success_rate', 'CAM3FSR', 'float'), ('third_person_side_cam_success_rate', 'CAM3SSR', 'float')]
 
+SCENARIOS_EVAL_FORMAT_UNITY = [('episode', 'E', 'int'), ('step', 'S', 'int'), ('cam1_episode_reward', 'CAM1R', 'float'),
+                               ('cam2_episode_reward', 'CAM2R', 'float'), ('cam3_episode_reward', 'CAM3R', 'float'),
+                               ('cam1_success_rate', 'CAM1SR', 'float'), ('cam2_success_rate', 'CAM2SR', 'float'), ('cam3_success_rate', 'CAM3SR', 'float')]
+
 class AverageMeter(object):
     def __init__(self):
         self._sum = 0
@@ -139,6 +143,9 @@ class Logger(object):
             elif domain_name=="MetaWorld":
                 self._scenarios_mg = MetersGroup(os.path.join(log_dir, 'eval_scenarios'),
                                             formating=SCENARIOS_EVAL_FORMAT_METAWORLD)
+            elif domain_name=="Unity":
+                self._scenarios_mg = MetersGroup(os.path.join(log_dir, 'eval_scenarios'),
+                                            formating=SCENARIOS_EVAL_FORMAT_UNITY)
 
     def _should_log(self, step, log_frequency):
         log_frequency = log_frequency or self._log_frequency

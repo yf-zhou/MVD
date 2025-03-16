@@ -1,5 +1,6 @@
 import time
-from unity_workspace import Workspace, default_cfg
+from unity_workspace import Workspace
+from unity_config import reach_cfg
 
 def main(cfg):
     global workspace
@@ -10,5 +11,5 @@ def main(cfg):
 
 if __name__ == '__main__':
     # cfg = parse_args()
-    cfg = default_cfg
+    cfg = reach_cfg
     main(cfg)

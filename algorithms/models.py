@@ -8,7 +8,7 @@ class Encoder(nn.Module):
     def __init__(self, obs_shape, cfg):
         super().__init__()
 
-        assert len(obs_shape) == 3
+        assert len(obs_shape) == 3 or cfg.domain_name == "Unity" and len(obs_shape) == 4
         self.num_layers = cfg.num_conv_layers
         self.num_filters = cfg.num_filters
         self.output_logits = False
@@ -166,7 +166,6 @@ class Actor(nn.Module):
         self.device = cfg.device
 
         obs_shape = (int(obs_shape[0] / self.num_cameras), *obs_shape[1:])
-        # obs_shape = obs_shape[1:]
 
         if self.multi_view_disentanglement:
             self.private_encoder = Encoder(obs_shape, cfg)
@@ -191,14 +190,14 @@ class Actor(nn.Module):
         self.trunk.apply(utils.weight_init)
 
     def forward(self, obs, proprioceptive_state=None, detach_encoder_conv=False, detach_encoder_head=False, eval_on_single_cam=False):
-        print(f"obs.shape in models/Actor/forward: {obs.shape}")
+        # print(f"obs.shape in models/Actor/forward: {obs.shape}")
         N = obs.shape[0]
         if eval_on_single_cam:
             num_cams = 1
         else:
             num_cams = self.num_cameras
         obs = obs.view((N * num_cams, -1, *obs.shape[2:]))
-        print(f"obs.shape in models/Actor/forward: {obs.shape} (reshaped)")
+        # print(f"obs.shape in models/Actor/forward: {obs.shape} (reshaped)")
         if self.multi_view_disentanglement:
             z_private = self.private_encoder(obs, detach_encoder_conv=detach_encoder_conv, detach_encoder_head=detach_encoder_head)
             z_shared = self.shared_encoder(obs, detach_encoder_conv=detach_encoder_conv, detach_encoder_head=detach_encoder_head)
@@ -282,10 +281,10 @@ class Critic(nn.Module):
         self.Q2.apply(utils.weight_init)
 
     def forward(self, obs, action, proprioceptive_state=None, detach_encoder_conv=False, detach_encoder_head=False):
-        print(f"obs.shape in models/Critic/forward: {obs.shape}")
+        # print(f"obs.shape in models/Critic/forward: {obs.shape}")
         N = obs.shape[0]
         obs = obs.view((N * self.num_cameras, -1, *obs.shape[2:]))
-        print(f"obs.shape in models/Critic/forward: {obs.shape} (reshaped)")
+        # print(f"obs.shape in models/Critic/forward: {obs.shape} (reshaped)")
         if self.multi_view_disentanglement:
             z_shared = self.shared_encoder(obs, detach_encoder_conv=detach_encoder_conv, detach_encoder_head=detach_encoder_head)
             z_private = self.private_encoder(obs, detach_encoder_conv=detach_encoder_conv, detach_encoder_head=detach_encoder_head)

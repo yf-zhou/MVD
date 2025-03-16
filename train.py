@@ -88,7 +88,7 @@ class Workspace(object):
 
         for episode in range(self.cfg.num_eval_episodes):
             obs, info = self.eval_env.reset()
-            print(f"obs.shape in train/Workspace/evaluate: {obs.shape}")
+            # print(f"obs.shape in train/Workspace/evaluate: {obs.shape}")
 
             done = False
             episode_reward = 0
@@ -137,9 +137,9 @@ class Workspace(object):
 
             for episode in range(self.cfg.num_eval_episodes):
                 obs, info = self.eval_env.reset()
-                print(f"obs.shape in train/Workspace/evaluate_on_each_scenario: {obs.shape}")
+                # print(f"obs.shape in train/Workspace/evaluate_on_each_scenario: {obs.shape}")
                 obs = obs.reshape(len(self.cameras), -1, *obs.shape[1:])[idx]
-                print(f"obs.shape in train/Workspace/evaluate_on_each_scenario: {obs.shape}")
+                # print(f"obs.shape in train/Workspace/evaluate_on_each_scenario: {obs.shape}")
 
                 done = False
                 episode_reward = 0

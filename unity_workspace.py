@@ -15,62 +15,6 @@ import algorithms
 from algorithms.replay_buffer import ReplayBuffer
 from video import VideoRecorder
 
-class Conf:
-    def __init__(self, d):
-        for k, v in d.items():
-            if isinstance(v, (list, tuple)):
-                setattr(self, k, [Conf(x) if isinstance(x, dict) else x for x in v])
-            else:
-                setattr(self, k, Conf(v) if isinstance(v, dict) else v)
-
-default_cfg = Conf({
-    "algorithm": "sac",
-    "unity_build": f"/home/medcvr/yifei/medcvr-rl/dvrk_mlagents/builds/reach_mvd_3cam/reach_mvd_3cam.x86_64",
-    "log_dir": "runs",
-    "exp_name": "dvrk_reach",
-    "seed": int(time.time()%10000), 
-    "device": "cuda",
-    "build_executable": "/home/medcvr/yifei/medcvr-rl/dvrk_mlagents/builds/reach_mvd_3cam/reach_mvd_3cam.x86_64",
-    "cameras": ["cam1", "cam2", "cam3"],
-    "replay_buffer_capacity": 100000,
-    "image_pad": 4,
-    "num_eval_episodes": 10,
-    "num_train_steps": 1000, 
-    "eval_freq": 1000,
-    "save_video": False,
-    "eval_on_each_camera": True,
-    "num_seed_steps": 1000,
-    "discount": 0.99,
-    "critic_tau": 0.01,
-    "encoder_tau": 0.05,
-    "actor_update_freq": 2,
-    "critic_target_update_freq": 2,
-    "batch_size": 128,
-    "image_reconstruction_loss": False,
-    "decoder_update_freq": 1,
-    "mvd_update_freq": 2,
-    "multi_view_disentanglement": False,
-    "mvd_lr": 1e-3,
-    "mvd_beta": 0.9,
-    "init_temperature": 0.1,
-    "actor_lr": 1e-3,
-    "alpha_lr": 1e-4,
-    "critic_lr": 1e-3,
-    "decoder_weight_lambda": 1e-7,
-    "actor_log_std_min": -10,
-    "actor_log_std_max": 2,
-    "frame_stack": 3,
-    "use_proprioceptive_state": False,
-    "feature_dim": 50,
-    "hidden_dim": 1024,
-    "hidden_depth": 2,
-    "num_conv_layers": 4,
-    "num_filters": 32,
-    "log_freq": 1000, 
-    "action_repeat": 4,
-    "domain_name": "dvrk_reach"
-})
-
 class Workspace:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -129,7 +73,8 @@ class Workspace:
             float(self.env.action_space.low.min()),
             float(self.env.action_space.high.max())
         ]
-        obs_shape = (len(self.env.observation_space), *self.env.observation_space[0].shape)
+        # obs_shape = (len(self.env.observation_space), *self.env.observation_space[0].shape)
+        obs_shape = (len(self.env.observation_space) * len(self.cameras), *self.env.observation_space[0].shape[1:])
         self.agent = algorithms.make_agent(obs_shape, self.env.action_space.shape, action_range, cfg, None)
 
         self.replay_buffer = ReplayBuffer(
@@ -158,7 +103,7 @@ class Workspace:
             self.video_recorder.init(enabled=True)
 
         for episode in range(self.cfg.num_eval_episodes):
-            obs = self.eval_env.reset()
+            obs = np.vstack(self.eval_env.reset())
 
             done = False
             episode_reward = 0
@@ -169,6 +114,7 @@ class Workspace:
                     action = self.agent.act(obs, None, sample=False)
 
                 obs, reward, terminated, info = self.eval_env.step(action)
+                obs = np.vstack(obs)
                 done = terminated
 
                 if record_video:
@@ -191,7 +137,7 @@ class Workspace:
         # TODO: not sure about this logging
         average_episode_reward /= self.cfg.num_eval_episodes
         self.logger2.log('eval/episode_reward', average_episode_reward, self.step)
-        self.loger.info(f"step: {step:05}\teval/episode_reward: {average_episode_reward}")
+        self.logger.info(f"step: {self.step:05}\teval/episode_reward: {average_episode_reward}")
 
         # success_rate = successes / self.cfg.num_eval_episodes
         # self.logger2.log('eval/success_rate', success_rate, self.step)
@@ -211,7 +157,7 @@ class Workspace:
                 self.video_recorder.init(enabled=True)
 
             for episode in range(self.cfg.num_eval_episodes):
-                obs = self.eval_env.reset()
+                obs = np.vstack(self.eval_env.reset())
                 obs = obs.reshape(len(self.cameras), -1, *obs.shape[1:])[idx]
 
                 done = False
@@ -223,6 +169,7 @@ class Workspace:
                         action = self.agent.act(obs, None, sample=False, eval_on_single_cam=True)
 
                     obs, reward, terminated, info = self.eval_env.step(action)
+                    obs = np.vstack(obs)
                     obs = obs.reshape(len(self.cameras), -1, *obs.shape[1:])[idx]
 
                     done = terminated
@@ -274,7 +221,7 @@ class Workspace:
                     start_time = time.time()
                     self.logger2.dump(self.step, save=(self.step > self.cfg.num_seed_steps), ty="train")
 
-                obs = self.env.reset()
+                obs = np.vstack(self.env.reset())
 
                 done = False
                 episode_reward = 0
@@ -285,7 +232,7 @@ class Workspace:
                 self.logger.info(f"step: {self.step:05}\ttrain/episode: {episode}")
 
             # evaluate agent periodically
-            if self.step % self.cfg.eval_freq == 0:
+            if self.step % self.cfg.eval_freq == 1:
                 self.logger2.log('eval/episode', episode, self.step)
                 self.logger.info(f"step: {self.step:05}\teval/episode: {episode}")
                 self.evaluate(record_video=self.cfg.save_video)
@@ -317,11 +264,12 @@ class Workspace:
                 torch.save(saveables, os.path.join(save_at, "models.pt"))
 
             next_obs, reward, terminated, info = self.env.step(action)
-            print(next_obs)
-            print(reward)
-            print(terminated)
+            next_obs = np.vstack(next_obs)
+            # print(next_obs)
+            # print(reward)
+            # print(terminated)
             # print(truncated)
-            print(info)
+            # print(info)
 
 
             # allow infinite bootstrap
