@@ -74,6 +74,7 @@ class SAC(object):
         return self.log_alpha.exp()
 
     def act(self, obs, proprioceptive_state=None, sample=False, eval_on_single_cam=False):
+        print(f"obs.shape in sac/SAC/act: {obs.shape}")
         obs = torch.FloatTensor(obs).to(self.device)
         obs = obs.unsqueeze(0)
 
@@ -83,6 +84,7 @@ class SAC(object):
         dist, _ = self.actor(obs, proprioceptive_state, eval_on_single_cam=eval_on_single_cam)
         action = dist.sample() if sample else dist.mean
         action = action.clamp(*self.action_range)
+        print(f"action.shape in sac/SAC/act: {action.shape}")
         assert action.ndim == 2 and action.shape[0] == 1
         return utils.to_np(action[0])
 
@@ -144,6 +146,7 @@ class SAC(object):
 
     def update(self, replay_buffer, logger, step):
         (obs, action, reward, next_obs, not_done, proprioceptive_state, next_proprioceptive_state) = replay_buffer.sample(self.batch_size)
+        print(f"obs.shape at sac/SAC/update: {obs.shape}")
 
         logger.log('train/batch_reward', reward.mean(), step)
 
