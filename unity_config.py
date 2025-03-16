@@ -72,6 +72,7 @@ reach_cfg = Conf({
     "algorithm": "sac",
     "action_repeat": 1,
     "num_train_steps": 1000,
+    "num_train_iters": 1,
     "replay_buffer_capacity": 100000,
     "num_seed_steps": 1000,
 
