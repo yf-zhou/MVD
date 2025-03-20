@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 
 class Conf:
     def __init__(self, d):
@@ -61,9 +62,9 @@ reach_cfg = Conf({
     "domain_name": "Unity", 
     "task_name": "dvrk_reach",
     "exp_name": "dvrk_reach_mvd",
-    "build_executable": f"/home/medcvr/yifei/medcvr-rl/dvrk_mlagents/builds/reach_mvd_3cam_randstart/reach_mvd_3cam_randstart.x86_64",
+    "build_executable": f"/home/medcvr/yifei/medcvr-rl/dvrk_mlagents/builds/reach_mvd_3cam_v2/reach_mvd_3cam_v2.x86_64",
     "device": "cuda",
-    "seed": int(time.time()%10000), 
+    "seed": int(datetime.now().strftime("%m%d%H%M")), 
 
     "cameras": ["cam1", "cam2", "cam3"],
     "multi_view_disentanglement": True,
@@ -85,7 +86,7 @@ reach_cfg = Conf({
     "num_eval_episodes": 10,
 
     "log_freq": 1000,
-    "save_freq": 250000,
+    "save_freq": 1000,
     "log_dir": "runs",
     "save_video": False,
 

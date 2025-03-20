@@ -18,7 +18,11 @@ from video import VideoRecorder
 class Workspace:
     def __init__(self, cfg):
         self.cfg = cfg
+
+        # current working directory + check if unique
         self.work_dir = os.path.join(os.getcwd(), cfg.log_dir, cfg.exp_name, str(cfg.seed))
+        assert not os.path.exists(self.work_dir), f'specified working directory {self.work_dir} already exists' 
+        os.makedirs(self.work_dir)       
 
         # logging
         logger = logging.getLogger(__name__)
@@ -37,12 +41,6 @@ class Workspace:
         logger.addHandler(file_handler)
         self.logger = logger
 
-        
-
-        # current working directory + check if unique
-        
-        # assert not os.path.exists(self.work_dir), f'specified working directory {self.work_dir} already exists'
-        os.makedirs(self.work_dir)
         self.logger2 = Logger(self.work_dir,
                              log_frequency=self.cfg.log_freq,
                              action_repeat=self.cfg.action_repeat,
@@ -51,6 +49,7 @@ class Workspace:
         
         print(f"workspace: {self.work_dir}")
         self.logger.info(f"{self.work_dir=}")
+        self.save_dir = os.path.join(self.work_dir, "trained_models")
 
         # setup
         utils.set_seed_everywhere(cfg.seed)
@@ -75,6 +74,9 @@ class Workspace:
         ]
         # obs_shape = (len(self.env.observation_space), *self.env.observation_space[0].shape)
         obs_shape = (len(self.env.observation_space) * len(self.cameras), *self.env.observation_space[0].shape[1:])
+        print(obs_shape, type(obs_shape))
+        print(self.env.action_space.shape, type(self.env.action_space.shape))
+        print(action_range, type(action_range))
         self.agent = algorithms.make_agent(obs_shape, self.env.action_space.shape, action_range, cfg, None)
 
         self.replay_buffer = ReplayBuffer(

@@ -3,7 +3,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import utils
-from algorithms import models
+# from algorithms import models
+from algorithms import models_onnx as models    # TODO: CHANGE THIS BACK TO TRAIN NORMALLY
 from algorithms.multi_view_disentanglement import update_mvd, update_decoder
 
 class SAC(object):

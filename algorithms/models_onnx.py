@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import utils
+import numpy as np
 
 class Encoder(nn.Module):
     """Convolutional encoder for image-based observations."""
@@ -209,8 +210,10 @@ class Actor(nn.Module):
             z_shared = z_shared.view(N, num_cams, -1)
             z_private = z_private.view(N, num_cams, -1)
 
-            idx_shared = torch.randperm(num_cams)[0]
-            idx_private = torch.randperm(num_cams)[0]
+            # idx_shared = torch.randperm(num_cams)[0]
+            # idx_private = torch.randperm(num_cams)[0]
+            idx_shared = torch.tensor(0)
+            idx_private = torch.tensor(0)
             z_shared = z_shared[:, idx_shared]
             z_private = z_private[:, idx_private]
             z = torch.cat((z_shared, z_private), dim=-1)
@@ -309,8 +312,10 @@ class Critic(nn.Module):
         if self.multi_view_disentanglement:
             z_shared = z_shared.view(N, self.num_cameras, -1)
             z_private = z_private.view(N, self.num_cameras, -1)
-            idx_shared = torch.randperm(self.num_cameras)[0]
-            idx_private = torch.randperm(self.num_cameras)[0]
+            # idx_shared = torch.randperm(self.num_cameras)[0]
+            # idx_private = torch.randperm(self.num_cameras)[0]
+            idx_shared = torch.tensor(0)
+            idx_private = torch.tensor(0)
             z_shared = z_shared[:, idx_shared]
             z_private = z_private[:, idx_private]
             z = torch.cat((z_shared, z_private), dim=-1)
