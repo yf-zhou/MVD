@@ -8,8 +8,6 @@ def main(cfg):
     start_time = time.time()
     workspace.run()
     print(f"total run time: {time.time()-start_time}")
-    exit()
-    print(f"exited?")
 
 if __name__ == '__main__':
     # cfg = parse_args()

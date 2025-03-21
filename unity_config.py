@@ -72,7 +72,8 @@ reach_cfg = Conf({
 
     "algorithm": "sac",
     "action_repeat": 1,
-    "num_train_steps": 1000,
+    "num_train_steps": 250000,
+    # "num_train_steps": 100,
     "num_train_iters": 1,
     "replay_buffer_capacity": 100000,
     "num_seed_steps": 1000,
@@ -82,13 +83,15 @@ reach_cfg = Conf({
     "image_pad": 4,
     "use_proprioceptive_state": False,
 
-    "eval_freq": 1000,
-    "num_eval_episodes": 10,
+    "eval_freq": 10000,
+    # "eval_freq": 50,
+    "num_eval_episodes": 20,
 
     "log_freq": 1000,
-    "save_freq": 1000,
+    "save_freq": 125000,
+    # "save_freq": 50,
     "log_dir": "runs",
-    "save_video": False,
+    "save_video": True,
 
     "discount": 0.99,
     "batch_size": 128,

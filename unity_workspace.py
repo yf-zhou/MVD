@@ -13,7 +13,8 @@ import torch
 import unity_utils as utils
 import algorithms 
 from algorithms.replay_buffer import ReplayBuffer
-from video import VideoRecorder
+# from video import VideoRecorder
+from unity_record import VideoRecorder
 
 class Workspace:
     def __init__(self, cfg):
@@ -101,10 +102,10 @@ class Workspace:
         average_episode_reward = 0
         successes = 0
 
-        if record_video:
-            self.video_recorder.init(enabled=True)
-
         for episode in range(self.cfg.num_eval_episodes):
+            if record_video:
+                self.video_recorder.init(os.path.join(self.video_dir, f'eval_{episode}.mp4'), enabled=True)
+
             obs = np.vstack(self.eval_env.reset())
 
             done = False
@@ -133,7 +134,7 @@ class Workspace:
             #     successes += info['is_success']
 
             if record_video:
-                self.video_recorder.save(os.path.join(self.video_dir, f'eval_{episode}.mp4'))
+                self.video_recorder.save()
                 self.video_recorder.reset()
 
         # TODO: not sure about this logging
@@ -154,11 +155,11 @@ class Workspace:
         for idx, cam in enumerate(self.cameras):
             average_episode_reward = 0
             successes = 0
-
-            if record_video:
-                self.video_recorder.init(enabled=True)
-
+            
             for episode in range(self.cfg.num_eval_episodes):
+                if record_video:
+                    self.video_recorder.init(os.path.join(self.video_dir, f'eval_scenarios_{cam}_cam_{episode}.mp4'), enabled=True)
+                    
                 obs = np.vstack(self.eval_env.reset())
                 obs = obs.reshape(len(self.cameras), -1, *obs.shape[1:])[idx]
 
@@ -187,7 +188,7 @@ class Workspace:
                 # except:
                 #     successes += info['is_success']
                 if record_video:
-                    self.video_recorder.save(os.path.join(self.video_dir, f'eval_scenarios_{cam}_cam_{episode}.mp4'))
+                    self.video_recorder.save()
                     self.video_recorder.reset()
 
             average_episode_reward /= self.cfg.num_eval_episodes
@@ -285,3 +286,6 @@ class Workspace:
             obs = next_obs
             episode_step += 1
             self.step += 1
+
+        self.env.close()
+        self.eval_env.close()

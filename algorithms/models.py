@@ -231,21 +231,6 @@ class Actor(nn.Module):
 
         dist = utils.SquashedNormal(mu, std)
 
-        if onnx_conversion:
-            action = dist.mean
-            action = action.clamp(*[-1.0, 1.0])
-
-            # if action is None:
-            #     return None
-            # elif action.nelement() == 0:
-            #     return np.array([])
-            # else:
-            #     return action.cpu().detach().numpy()
-
-            # return utils.to_np(action[0])
-
-            return action
-
         return dist, z
 
     def log(self, logger, step):
