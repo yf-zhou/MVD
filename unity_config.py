@@ -62,7 +62,7 @@ reach_cfg = Conf({
     "domain_name": "Unity", 
     "task_name": "dvrk_reach",
     "exp_name": "dvrk_reach_mvd",
-    "build_executable": f"/home/medcvr/yifei/medcvr-rl/dvrk_mlagents/builds/reach_mvd_3cam_v2/reach_mvd_3cam_v2.x86_64",
+    "build_executable": f"/home/medcvr/yifei/medcvr-rl/dvrk_mlagents/builds/reach_mvd_3cam_v3/reach_mvd_3cam_v3.x86_64",
     "device": "cuda",
     "seed": int(datetime.now().strftime("%m%d%H%M")), 
 
@@ -90,6 +90,67 @@ reach_cfg = Conf({
     "log_freq": 1000,
     "save_freq": 125000,
     # "save_freq": 50,
+    "log_dir": "runs",
+    "save_video": True,
+
+    "discount": 0.99,
+    "batch_size": 128,
+    "hidden_dim": 1024,
+    "hidden_depth": 2,
+
+    "actor_lr": 1e-3,
+    "actor_beta": 0.9,
+    "actor_log_std_min": -10,
+    "actor_log_std_max": 2,
+    "actor_update_freq": 2,
+    "init_temperature": 0.1,
+    "alpha_lr": 1e-4,
+
+    "critic_lr": 1e-3,
+    "critic_tau": 0.01,
+    "critic_target_update_freq": 2,
+
+    "encoder_tau": 0.05,
+    "num_conv_layers": 4,
+    "feature_dim": 50,
+    "num_filters": 32,
+    "image_reconstruction_loss": True,
+    "decoder_weight_lambda": 1e-7,
+    "decoder_update_freq": 1,
+
+    "mvd_lr": 1e-3,
+    "mvd_beta": 0.9,
+    "mvd_update_freq": 2
+})
+
+panda_cfg = Conf({
+    "domain_name": "Panda", 
+    "task_name": "PandaReachDense-v3",
+    "exp_name": "panda_reach_sac_mvd",
+    "device": "cuda",
+    "seed": int(datetime.now().strftime("%m%d%H%M")), 
+
+    "cameras": ["first_person", "third_person_front", "third_person_side"],
+    "multi_view_disentanglement": True,
+    "eval_on_each_camera": False,
+
+    "algorithm": "sac",
+    "action_repeat": 1,
+    "num_train_steps": 250000,
+    "num_train_iters": 1,
+    "replay_buffer_capacity": 100000,
+    "num_seed_steps": 1000,
+
+    "image_size": 84,
+    "frame_stack": 1,
+    "image_pad": 4,
+    "use_proprioceptive_state": False,
+
+    "eval_freq": 5000,
+    "num_eval_episodes": 20,
+
+    "log_freq": 1000,
+    "save_freq": 125000,
     "log_dir": "runs",
     "save_video": True,
 

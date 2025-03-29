@@ -11,16 +11,17 @@ import torch
 
 from algorithms import make_agent
 from algorithms.sac import SAC
-from unity_config import reach_cfg
+from unity_config import Conf, reach_cfg, panda_cfg
 
-colours = ["#8d6a9f", "#8cbcb9", "#dda448", "#bb342f"]
+# colours = ["#8d6a9f", "#8cbcb9", "#dda448", "#bb342f"]
+colours = ["#fde725", "#21918c", "#440154"]     # https://waldyrious.net/viridis-palette-generator/
 
 # load obs
 def load_obs(filename: str) -> list[np.array]:
     obs_file = filename
 
     with open(obs_file, 'rb') as f:
-        observations = np.load(f)
+        observations = np.load(f, allow_pickle=True)
 
     return observations
 
@@ -37,14 +38,17 @@ def view_one_obs(idx: int, observations: list[np.array], fig_num: int = 1) -> ma
 
     return fig
 
-def load_model(filename: str) -> SAC:
+def load_model(filename: str, cfg: Conf) -> SAC:
     models_dict = torch.load(filename)
 
     obs_shape = (9, 84, 84)
-    action_shape = (2,)
+    if cfg.domain_name == "Unity":
+        action_shape = (2,)
+    else:
+        action_shape = (3,)
     action_range = [-1.0, 1.0]
 
-    agent = make_agent(obs_shape, action_shape, action_range, reach_cfg, None)
+    agent = make_agent(obs_shape, action_shape, action_range, cfg, None)
 
     agent.actor.load_state_dict(models_dict["actor"])
     agent.critic.load_state_dict(models_dict["critic"])
@@ -58,21 +62,23 @@ def infer_one(input_tensor: torch.Tensor, agent: SAC, model_name: str) -> torch.
 
     return z
 
-def inference(observations: list[np.array], agent: SAC, model_name: str, cameras: list[str]) -> tuple[dict[list[torch.Tensor]]]:
+def inference(observations: list[np.array], agent: SAC, model_name: str, cfg: Conf) -> tuple[dict[list[torch.Tensor]]]:
+    cameras = cfg.cameras
+
     z_both = {cam: [] for cam in cameras}
     z_shared = {cam: [] for cam in cameras}
     z_private = {cam: [] for cam in cameras}
 
     print()
     for i, obs in enumerate(observations):
-        obs = torch.Tensor(obs).unsqueeze(0).to(device=reach_cfg.device)
+        obs = torch.Tensor(obs).unsqueeze(0).to(device=cfg.device)
 
         for j, cam in enumerate(cameras):
             z = infer_one(obs[:, j*3:j*3+3], agent, model_name)
 
             z_both[cam].append(z)
-            z_shared[cam].append(z[:, :reach_cfg.feature_dim])
-            z_private[cam].append(z[:, reach_cfg.feature_dim:])
+            z_shared[cam].append(z[:, :cfg.feature_dim])
+            z_private[cam].append(z[:, cfg.feature_dim:])
 
             print(f"\rinferred obs {i+1}/{len(observations)},\tcamera {j+1}/{len(cameras)}", end='')
     
@@ -87,6 +93,14 @@ def pca(features: torch.Tensor, n_components: int = 3) -> np.array:
     pipe = Pipeline([('scaler', StandardScaler()), ('pca', pca)])
 
     transformed = pipe.fit_transform(f)
+
+    return transformed
+
+def tsne(features: torch.Tensor, n_components: int = 3) -> np.array:
+    f = features.detach().cpu().numpy()
+
+    tsne = TSNE(n_components=n_components, random_state=100)
+    transformed = tsne.fit_transform(f)
 
     return transformed
 
@@ -115,32 +129,81 @@ def view(z_both, z_shared, z_private, cameras, projection, feature_dim, proj_arg
     fig.set_size_inches(14, 9)
 
 if __name__ == '__main__':
-    # load observations
-    filename = "/home/medcvr/yifei/thesis/data/reach_sim_obs/dvrk_reach_sim_50.npy"
-    observations = load_obs(filename)
+    # unity
+    # cfg = reach_cfg
+    # data_file = "/home/medcvr/yifei/thesis/data/reach_sim_obs/dvrk_reach_sim_50_steps.npy"
+    # # model_file = "/home/medcvr/yifei/thesis/runs/dvrk_reach_mvd/3201550/trained_models/env_step15000/models.pt"
+    # model_file = "/home/medcvr/yifei/thesis/runs/dvrk_reach_mvd/3202111/trained_models/env_step250000/models.pt"
 
-    # view one
-    idx = 15
+    # panda
+    cfg = panda_cfg
+    data_file = "/home/medcvr/yifei/thesis/data/panda_reach_obs/panda_reach_50_steps.npy"
+    model_file = "/home/medcvr/yifei/MVD/runs/panda_reach_sac_mvd/120801/trained_models/env_step150000/models.pt"
+
+    # general
+    idx = 45
+    method = tsne
+
+
+    # run
+    # load observations
+    observations = load_obs(data_file)
+
+    # view observation
     fig = view_one_obs(idx, observations, 1)
-    # plt.show()
 
     # load model
-    # filename = "/home/medcvr/yifei/thesis/runs/dvrk_reach_mvd/3201550/trained_models/env_step15000/models.pt"
-    filename = "/home/medcvr/yifei/MVD/runs/panda_reach_sac_mvd/120801/trained_models/env_step150000/models.pt"
-    agent = load_model(filename)
+    agent = load_model(model_file, cfg)
 
-    obs = torch.Tensor(observations[idx][:3]).unsqueeze(0).to(device=reach_cfg.device)
+    # view one breakdown
+    obs = torch.Tensor(observations[idx][:3]).unsqueeze(0).to(device=cfg.device)
     z = infer_one(obs, agent, "actor")
 
     # perform inference
-    z_both, z_shared, z_private = inference(observations, agent, "actor", ["cam1", "cam2", "cam3"])
+    z_both, z_shared, z_private = inference(observations, agent, "actor", cfg)
 
     # plot
     fig, axs = plt.subplots(2)
-    ax_time, ax_cam = plot_projections(z_both, reach_cfg.cameras, pca, 100, *axs, [2])
-    # plt.show()
-
-    view(z_both, z_shared, z_private, reach_cfg.cameras, pca, 50, [2])
+    # concatenated representations
+    ax_time, ax_cam = plot_projections(z_both, cfg.cameras, tsne, 100, *axs, [2])
+    # breakdown
+    view(z_both, z_shared, z_private, cfg.cameras, tsne, 50, [2])
     plt.show()
 
-    print(agent)
+    # cfg = panda_cfg
+
+
+    # # load observations
+    # # filename = "/home/medcvr/yifei/thesis/data/reach_sim_obs/dvrk_reach_sim_50.npy"
+    # filename = "/home/medcvr/yifei/thesis/data/panda_reach_obs/panda_reach_50_steps.npy"
+    # observations = load_obs(filename)
+
+    # # view one
+    # idx = 45
+    # fig = view_one_obs(idx, observations, 1)
+    # # plt.show()
+
+    # # load model
+    # # filename = "/home/medcvr/yifei/thesis/runs/dvrk_reach_mvd/3201550/trained_models/env_step15000/models.pt"
+    # filename = "/home/medcvr/yifei/MVD/runs/panda_reach_sac_mvd/120801/trained_models/env_step150000/models.pt"
+    # # filename = "/home/medcvr/yifei/thesis/scripts/MVD/runs/panda_reach_sac_mvd/3271941/trained_models/env_step5000/models.pt"
+    # agent = load_model(filename, cfg)
+
+    # obs = torch.Tensor(observations[idx][:3]).unsqueeze(0).to(device=cfg.device)
+    # z = infer_one(obs, agent, "actor")
+
+    # # perform inference
+    # # z_both, z_shared, z_private = inference(observations, agent, "actor", ["cam1", "cam2", "cam3"])
+    # z_both, z_shared, z_private = inference(observations, agent, "actor", ["first_person", "third_person_front", "third_person_side"], cfg)
+
+    # # plot
+    # fig, axs = plt.subplots(2)
+    # # ax_time, ax_cam = plot_projections(z_both, cfg.cameras, pca, 100, *axs, [2])
+    # ax_time, ax_cam = plot_projections(z_both, cfg.cameras, tsne, 100, *axs, [2])
+    # # plt.show()
+
+    # # view(z_both, z_shared, z_private, cfg.cameras, pca, 50, [2])
+    # view(z_both, z_shared, z_private, cfg.cameras, tsne, 50, [2])
+    # plt.show()
+
+    # print(agent)

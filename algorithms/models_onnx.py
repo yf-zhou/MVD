@@ -191,6 +191,9 @@ class Actor(nn.Module):
 
     def forward(self, obs, proprioceptive_state=None, detach_encoder_conv=False, detach_encoder_head=False, eval_on_single_cam=False, onnx_conversion=False):
         # print(f"obs.shape in models/Actor/forward: {obs.shape}")
+        # scale by 255 for unity
+        obs *= 255.
+
         N = obs.shape[0]
         if eval_on_single_cam:
             num_cams = 1

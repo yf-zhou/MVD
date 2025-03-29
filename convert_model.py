@@ -1,6 +1,7 @@
 import torch 
 
-dirname = "/home/medcvr/yifei/thesis/runs/dvrk_reach_mvd/3201550/trained_models/env_step15000/"
+# dirname = "/home/medcvr/yifei/thesis/runs/dvrk_reach_mvd/3201550/trained_models/env_step15000/"
+dirname = "/home/medcvr/yifei/thesis/runs/dvrk_reach_mvd/3202111/trained_models/env_step250000/"
 filename = "models.pt"
 
 models_dict = torch.load(dirname + filename)

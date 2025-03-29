@@ -7,7 +7,7 @@ CUDA_VISIBLE_DEVICES=0 python3 train.py \
 	--image_reconstruction_loss True \
 	--num_train_steps 250000 \
 	--eval_freq 5000 \
-	--save_freq 250000 \
+	--save_freq 5000 \
 	--num_eval_episodes 20 \
 	--action_repeat 1 \
 	--cameras first_person third_person_front third_person_side \
