@@ -15,20 +15,20 @@ class SimRealDataset(Dataset):
         self.logger = logger
         
         self.root = cfg.data_folder
-        self.directories = [f['name'] for f in cfg['folders']]
+        self.directories = [f.name for f in cfg.folders]
         self.cameras = cfg.cameras
         
         self.transform = transform
         
-        self.image_dims = cfg.image_dims
+        self.image_dims = tuple(cfg.image_dims)
         
         self.time_step = cfg.time_step
         self.tail_length = self.time_step #+ 1   # due to numbering
         
-        self.lengths = {d: len(os.listdir(os.path.join(self.root, d, cam))) for cam in self.cameras[d] - self.tail_length for d in self.directories}
+        self.lengths = {d: len(os.listdir(os.path.join(self.root, d, self.cameras[0]))) - self.tail_length for d in self.directories}
         self.starts = {self.directories[0]: 0}
         for i, d in enumerate(self.directories[1:]):
-            self.starts[d] = self.starts[self.directories[i] + self.lengths[self.directories[i]]]
+            self.starts[d] = self.starts[self.directories[i]] + self.lengths[self.directories[i]]
         
     def __len__(self):
         return sum(self.lengths.values())
@@ -40,22 +40,32 @@ class SimRealDataset(Dataset):
         idcs = [idx - start + 1, idx - start + self.time_step + 1]  # numbering in folder starts at 1
         
         images = []
-        for cam in self.cameras[directory]:
-            cam_images = []
-            for i in idcs:
-                img_path = os.path.join(self.root, directory, cam, f"img_{i:04}.png")
-                
-                image = decode_image(img_path)
-                
-                cam_images.append(image)
-                
-            images.append(torch.stack(cam_images))
-            
-        self.logger.debug(f"{directory=}\t{idcs=}")
-        
-        images = torch.stack(images)
-        
-        return self.transform(images), idcs 
+
+        for cam in self.cameras:
+            img_path = os.path.join(self.root, directory, cam, f"img_{idcs[0]:04}.png")
+            image = decode_image(img_path)
+
+            if self.transform:
+                image = self.transform(image)
+
+            images.append(image)
+
+        obs = torch.stack(images).reshape(-1, *self.image_dims[1:])
+
+        images = []
+
+        for cam in self.cameras:
+            img_path = os.path.join(self.root, directory, cam, f"img_{idcs[1]:04}.png")
+            image = decode_image(img_path)
+
+            if self.transform:
+                image = self.transform(image)
+
+            images.append(image)
+
+        next_obs = torch.stack(images).reshape(-1, *self.image_dims[1:])
+
+        return obs, next_obs, idcs
     
     def directory_from_idx(self, idx):
         for i, d in enumerate(self.directories[:-1]):

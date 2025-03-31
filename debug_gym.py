@@ -3,6 +3,7 @@ from unity_config import default_cfg, reach_cfg
 
 from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.envs.unity_gym_env import UnityToGymWrapper
+from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 
 import time
 import numpy as np
@@ -42,7 +43,9 @@ def view_panda_obs(panda):
     # panda_workspace.run()
 
 def create_unity_workspace(executable=f"/home/medcvr/yifei/medcvr-rl/dvrk_mlagents/builds/reach_mvd_3cam_v2/reach_mvd_3cam_v2.x86_64"):
-    unity_env = UnityEnvironment(executable, worker_id=2)
+    channel = EngineConfigurationChannel()
+    unity_env = UnityEnvironment(executable, worker_id=2, side_channels=[channel])
+    channel.set_configuration_parameters(time_scale=20, width=168, height=168)
     unity = UnityToGymWrapper(unity_env, uint8_visual=True, allow_multiple_obs=True)
 
     return unity_env, unity

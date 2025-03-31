@@ -241,6 +241,26 @@ class Actor(nn.Module):
             if type(m) == nn.Linear:
                 logger.log_param(f'train_actor/fc{i}', m, step)
 
+    def get_representation(self, obs, detach_encoder_conv=False, detach_encoder_head=False):
+        N = obs.shape[0]
+        obs = obs.view((N * self.num_cameras, -1, *obs.shape[2:]))
+        if self.multi_view_disentanglement:
+            z_shared = self.shared_encoder(obs, detach_encoder_conv=detach_encoder_conv, detach_encoder_head=detach_encoder_head)
+            z_private = self.private_encoder(obs, detach_encoder_conv=detach_encoder_conv, detach_encoder_head=detach_encoder_head)
+            z = torch.cat((z_shared, z_private), dim=-1)
+        else:
+            z = self.encoder(obs, detach_encoder_conv=detach_encoder_conv, detach_encoder_head=detach_encoder_head)
+            z_shared = None
+            z_private = None
+
+        if self.multi_view_disentanglement:
+            z_private = z_private.reshape(N, self.num_cameras, -1)
+            z_shared = z_shared.reshape(N, self.num_cameras, -1)
+
+        z = z.reshape(N, self.num_cameras, -1)
+
+        return z, z_shared, z_private
+
 class Critic(nn.Module):
     """Critic network, employs double Q-learning."""
     def __init__(self, obs_shape, action_shape, cfg, proprioceptive_state_shape=None):

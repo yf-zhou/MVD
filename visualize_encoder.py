@@ -31,9 +31,12 @@ def view_one_obs(idx: int, observations: list[np.array], fig_num: int = 1) -> ma
     axs = []
 
     obs = observations[idx]
-    for i in range(3):
-        ax = plt.subplot(1, 3, i+1)
-        ax.imshow(np.moveaxis(obs[i*3:i*3+3], 0, -1))
+    for i in range(int(obs.shape[0]/3)):
+        ax = plt.subplot(1, int(obs.shape[0]/3), i+1)
+        if isinstance(obs, np.ndarray):
+            ax.imshow(np.moveaxis(obs[i*3:i*3+3], 0, -1))
+        else:
+            ax.imshow(obs[i*3:i*3+3].movedim(0, -1))
         axs.append(ax)
 
     return fig
@@ -42,17 +45,25 @@ def load_model(filename: str, cfg: Conf) -> SAC:
     models_dict = torch.load(filename)
 
     obs_shape = (9, 84, 84)
-    if cfg.domain_name == "Unity":
+    obs_shape = tuple(cfg.image_dims)
+    if cfg.domain_name == "Unity" and cfg.action_dim == 1:
+        action_shape = (1,)
+        obs_shape = (6, 84, 84)
+    elif cfg.domain_name == "Unity":
         action_shape = (2,)
+        obs_shape = (9, 84, 84)
     else:
         action_shape = (3,)
     action_range = [-1.0, 1.0]
 
     agent = make_agent(obs_shape, action_shape, action_range, cfg, None)
 
-    agent.actor.load_state_dict(models_dict["actor"])
-    agent.critic.load_state_dict(models_dict["critic"])
-    agent.critic_target.load_state_dict(models_dict["critic_target"])
+    if "actor" in models_dict.keys():
+        agent.actor.load_state_dict(models_dict["actor"])
+    else:
+        agent.actor.load_state_dict(models_dict)
+    # agent.critic.load_state_dict(models_dict["critic"])
+    # agent.critic_target.load_state_dict(models_dict["critic_target"])
 
     return agent
 
@@ -108,6 +119,9 @@ def plot_projections(z, cameras, projection, feature_dim, ax_time = None, ax_cam
     if not ax_time and not ax_cam:
         fig, (ax_time, ax_cam) = plt.subplots(nrows=2)
 
+    time_scatters = []
+    cam_scatters = []
+
     for i, cam in enumerate(cameras):
         features = torch.stack(z[cam]).reshape(-1, feature_dim)
         proj = projection(features, *proj_args)
@@ -117,28 +131,45 @@ def plot_projections(z, cameras, projection, feature_dim, ax_time = None, ax_cam
         s_time = ax_time.scatter(proj[:, 0], proj[:, 1], c=times)
         s_cam = ax_cam.scatter(proj[:, 0], proj[:, 1], facecolor=colours[i])
 
-    return ax_time, ax_cam
+        time_scatters.append(s_time)
+        cam_scatters.append(s_cam)
+
+    # return ax_time, ax_cam
+    # return s_time, s_cam
+    return time_scatters, cam_scatters
 
 def view(z_both, z_shared, z_private, cameras, projection, feature_dim, proj_args = []):
     fig, axs = plt.subplots(2, 3)
 
-    plot_projections(z_both, cameras, projection, feature_dim*2, axs[0, 0], axs[1, 0], proj_args)
-    plot_projections(z_shared, cameras, projection, feature_dim, axs[0, 1], axs[1, 1], proj_args)
-    plot_projections(z_private, cameras, projection, feature_dim, axs[0, 2], axs[1, 2], proj_args)
+    s_time_b, s_cam_b = plot_projections(z_both, cameras, projection, feature_dim*2, axs[0, 0], axs[1, 0], proj_args)
+    s_time_s, s_cam_s = plot_projections(z_shared, cameras, projection, feature_dim, axs[0, 1], axs[1, 1], proj_args)
+    s_time_p, s_cam_p = plot_projections(z_private, cameras, projection, feature_dim, axs[0, 2], axs[1, 2], proj_args)
 
     fig.set_size_inches(14, 9)
 
+    l0 = fig.legend(*s_time_b[0].legend_elements(num=4), loc="outside upper center", title="frame number", ncols=5)
+    l1 = fig.legend([*s_time_b], cameras, loc="outside lower center", ncols=3)
+
+
 if __name__ == '__main__':
+    # encoders
+    cfg = reach_cfg
+    cfg.cameras = ["oak", "sim"]
+    data_file = "data/reach_real_obs/dvrk_reach_real_10.npy"
+    model_file = "models/actor.pt"
+
+
     # unity
     # cfg = reach_cfg
-    # data_file = "/home/medcvr/yifei/thesis/data/reach_sim_obs/dvrk_reach_sim_50_steps.npy"
+    # data_file = "/home/medcvr/yifei/thesis/data/reach_sim_obs/dvrk_reach_sim_50_fast.npy"
     # # model_file = "/home/medcvr/yifei/thesis/runs/dvrk_reach_mvd/3201550/trained_models/env_step15000/models.pt"
     # model_file = "/home/medcvr/yifei/thesis/runs/dvrk_reach_mvd/3202111/trained_models/env_step250000/models.pt"
+    
 
     # panda
-    cfg = panda_cfg
-    data_file = "/home/medcvr/yifei/thesis/data/panda_reach_obs/panda_reach_50_steps.npy"
-    model_file = "/home/medcvr/yifei/MVD/runs/panda_reach_sac_mvd/120801/trained_models/env_step150000/models.pt"
+    # cfg = panda_cfg
+    # data_file = "/home/medcvr/yifei/thesis/data/panda_reach_obs/panda_reach_50_steps.npy"
+    # model_file = "/home/medcvr/yifei/MVD/runs/panda_reach_sac_mvd/120801/trained_models/env_step150000/models.pt"
 
     # general
     idx = 45

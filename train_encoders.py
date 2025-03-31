@@ -34,8 +34,8 @@ logger.addHandler(file_handler)
 writer = SummaryWriter()
 
 def update(model: Actor, optimizer, obs, next_obs, idcs, epoch, step):
-    z, z_shared, z_private = model(obs)
-    next_z, next_z_shared, next_z_private = model(next_obs)
+    z, z_shared, z_private = model.get_representation(obs)
+    next_z, next_z_shared, next_z_private = model.get_representation(next_obs)
 
     num_cameras = z.shape[1]
 
@@ -81,12 +81,12 @@ def train(model: Actor, dataset: SimRealDataset, cfg: Conf):
     i = 0
     for epoch in range(cfg.num_epochs):
         j = 0
-        for imgs, idcs in iter(dataloader):
+        for obs, next_obs, idcs in iter(dataloader):
             if cfg.device == 'cuda' and torch.cuda.is_available():
-                imgs = imgs.cuda()
-                idcs = idcs.cuda()
+                obs = obs.cuda()
+                next_obs = next_obs.cuda()
             
-            loss = update(model, optimizer, imgs[:, :, 0], imgs[:, :, 1], idcs, epoch, j)
+            loss = update(model, optimizer, obs, next_obs, idcs, epoch, j)
 
             iters.append(i)
             losses.append(float(loss)/batch_size)
@@ -103,9 +103,9 @@ def train(model: Actor, dataset: SimRealDataset, cfg: Conf):
     plt.savefig(os.path.join(cfg.output_folder, "losses.png"))
 
 def run_train(cfg: Conf):
-    logger.info(f"training config: {cfg=}")
+    logger.info(f"training config: {cfg.__dict__=}")
 
-    model = Actor(obs_shape=cfg.image_dims,
+    model = Actor(obs_shape=(cfg.image_dims[0]*len(cfg.cameras), *cfg.image_dims[1:]),
                   action_shape=cfg.action_shape,
                   cfg=cfg)
     
@@ -115,7 +115,9 @@ def run_train(cfg: Conf):
     else:
         print("Training on CPU")
 
-    transform = v2.Compose([])
+    transform = v2.Compose([
+        v2.RandomResizedCrop(size=cfg.image_dims[1:], scale=(1, 1), ratio=[1, 1])
+    ])
     dataset = SimRealDataset(transform=transform, cfg=cfg, logger=logger)
 
     train(model, dataset, cfg)
@@ -124,16 +126,26 @@ def run_train(cfg: Conf):
     writer.close()
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    # parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "config_file",
-        help="yaml file with configuration for training"
-    )
+    # parser.add_argument(
+    #     "config_file",
+    #     help="yaml file with configuration for training"
+    # )
     
-    args = parser.parse_args()
+    # args = parser.parse_args()
+
+    # config_file = args.config_file
+    config_file = "config/reach.yaml"
     
-    with open(args.config_file, 'r') as f:
+    with open(config_file, 'r') as f:
         cfg = yaml.safe_load(f)
         
+    from unity_config import reach_cfg
+    
+    # cfg = Conf(cfg)
+    cfg = Conf(dict(reach_cfg.__dict__, **cfg))
+
+    cfg.image_dims = tuple(cfg.image_dims)
+
     run_train(cfg)

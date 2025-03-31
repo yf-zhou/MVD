@@ -1,6 +1,7 @@
 import gymnasium as gym
 from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.envs.unity_gym_env import UnityToGymWrapper
+from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 
 import os
 import time
@@ -60,9 +61,14 @@ class Workspace:
         self.cameras = cfg.cameras
 
         # environments
-        self.unity_env = UnityEnvironment(cfg.build_executable)
+        self.channel = EngineConfigurationChannel()
+        self.unity_env = UnityEnvironment(cfg.build_executable, worker_id=0, side_channels=[self.channel])
+        self.channel.set_configuration_parameters(time_scale=cfg.time_scale, width=168, height=168)
         self.env = UnityToGymWrapper(self.unity_env, uint8_visual=True, allow_multiple_obs=True, action_space_seed=cfg.seed)
-        self.unity_eval_env = UnityEnvironment(cfg.build_executable, worker_id=1)
+
+        self.eval_channel = EngineConfigurationChannel()
+        self.unity_eval_env = UnityEnvironment(cfg.build_executable, worker_id=1, side_channels=[self.eval_channel])
+        self.eval_channel.set_configuration_parameters(time_scale=cfg.time_scale, width=168, height=168)
         self.eval_env = UnityToGymWrapper(self.unity_eval_env, uint8_visual=True, allow_multiple_obs=True, action_space_seed=cfg.seed+100)
 
         self.env.reset()
@@ -104,7 +110,7 @@ class Workspace:
 
         for episode in range(self.cfg.num_eval_episodes):
             if record_video:
-                self.video_recorder.init(os.path.join(self.video_dir, f'eval_{episode}.mp4'), enabled=True)
+                self.video_recorder.init(os.path.join(self.video_dir, f'eval_{episode:02}.mp4'), enabled=True)
 
             obs = np.vstack(self.eval_env.reset())
 
@@ -158,7 +164,7 @@ class Workspace:
             
             for episode in range(self.cfg.num_eval_episodes):
                 if record_video:
-                    self.video_recorder.init(os.path.join(self.video_dir, f'eval_scenarios_{cam}_cam_{episode}.mp4'), enabled=True)
+                    self.video_recorder.init(os.path.join(self.video_dir, f'eval_scenarios_{cam}_cam_{episode:02}.mp4'), enabled=True)
                     
                 obs = np.vstack(self.eval_env.reset())
                 obs = obs.reshape(len(self.cameras), -1, *obs.shape[1:])[idx]
